@@ -6,6 +6,7 @@
 #include <set>
 #include <vector>
 #include <cstddef>
+#include <iostream>
 
 #define BITLENGTH 8
 
@@ -34,18 +35,27 @@ private:
 
 class Node {
 public:
-    Node(uint8_t id): id_(id), fingerTable_(id) {}
+    Node(uint8_t id): id_(id), fingerTable_(id), predecessor_(nullptr) {}
+    
     void join(Node* node);
+    
     uint8_t find(uint8_t key);
+    
     void insert(uint8_t key);
     void remove(uint8_t key);
-
-    friend class FingerTable;
     
+    Node* findSuccessor(uint8_t key);
+    Node* closestPrecedingFinger(uint8_t key);
+    
+    static bool inInterval(uint8_t key, uint8_t start, uint8_t end, bool inclusiveEnd);
+    
+    friend class FingerTable;
+
 private:
     uint64_t id_;
     FingerTable fingerTable_;
     std::map<uint8_t, uint8_t> localKeys_;
+    Node* predecessor_;
 };
 
 #endif
