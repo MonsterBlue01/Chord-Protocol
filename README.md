@@ -1,4 +1,4 @@
-# CSE-250A-Project
+# Chord protocol implementation
 
 ## How to Run
 
