@@ -40,15 +40,13 @@ public:
 
     void join(Node* node);
     uint8_t find(uint8_t key);
-    void insert(uint8_t key);                      // 如果只给 key，则 value 默认为 key
-    void insert(uint8_t key, uint8_t value);         // 给定 key 和 value
-    void remove(uint8_t key);
+    void insert(uint8_t key);
+    void insert(uint8_t key, uint8_t value);
 
     Node* findSuccessor(uint8_t key);
     Node* closestPrecedingFinger(uint8_t key);
     Node* findPredecessor(uint8_t key);
 
-    // 在 public 中声明
     uint8_t iterativeLookup(uint8_t key, std::vector<uint8_t>& path, std::optional<uint8_t>& outValue);
 
     uint64_t getId() const { return id_; }
@@ -62,11 +60,11 @@ public:
 
     static bool inInterval(uint8_t key, uint8_t start, uint8_t end, bool inclusiveEnd);
 
-    // 新增：打印本节点存储的键值对
     void printKeys();
     
-    // 已经实现的打印 finger table
     void printFingerTable();
+
+    void fixFingerTableOnLeave(Node* leaving, Node* succ, int i);
 
     friend class FingerTable;
 
