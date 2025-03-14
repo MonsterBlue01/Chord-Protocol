@@ -45,6 +45,7 @@ Node* Node::closestPrecedingFinger(uint8_t key) {
 
 void Node::join(Node* node) {
     if (node == nullptr) {
+        // 第一个节点，所有 finger 指向自己
         for (int i = 1; i <= BITLENGTH; i++) {
             fingerTable_.set(i, this);
         }
@@ -52,12 +53,15 @@ void Node::join(Node* node) {
         std::cout << "Node " << (int)id_ << " joined as the first node.\n";
     } else {
         std::cout << "Node " << (int)id_ << " is joining using Node " << (int)node->id_ << ".\n";
-        Node* succ = node->findSuccessor(this->id_);
+        // 初始化 finger[1]
+        Node* succ = node->findSuccessor((this->id_ + 1) % 256);
         fingerTable_.set(1, succ);
-        
+
+        // 设置前驱，并更新后继的前驱
         predecessor_ = succ->predecessor_;
         succ->predecessor_ = this;
-        
+
+        // 初始化 finger[2..m]
         for (int i = 1; i < BITLENGTH; i++) {
             uint8_t start = (this->id_ + (1 << i)) % 256;
             if (inInterval(start, this->id_, fingerTable_.get(i)->id_, false))
@@ -68,6 +72,7 @@ void Node::join(Node* node) {
             }
         }
         
+        // 迁移键（与原来代码一致）
         Node* successor = fingerTable_.get(1);
         std::vector<uint8_t> keysToMigrate;
         for (auto &pair : successor->localKeys_) {
@@ -77,10 +82,16 @@ void Node::join(Node* node) {
             }
         }
         for (auto key : keysToMigrate) {
+            // 记录旧拥有者的 ID
+            uint8_t oldOwnerId = successor->id_;
+            // 迁移键到当前节点
             this->localKeys_[key] = successor->localKeys_[key];
             successor->localKeys_.erase(key);
-            std::cout << "Migrated key " << (int)key << " to Node " << (int)this->id_ << "\n";
+            std::cout << "migrate " << (int)key << " from node " << (int)oldOwnerId
+                      << " to node " << (int)this->id_ << "\n";
         }
+        // 新节点构造好自己后，让其它节点更新它们的 finger table
+        updateOthers();
     }
     fingerTable_.prettyPrint();
 }
@@ -89,4 +100,74 @@ uint8_t Node::find(uint8_t key) {
     Node* n = findSuccessor(key);
     std::cout << "Key " << (int)key << " is located at Node " << (int)n->id_ << "\n";
     return n->id_;
+}
+
+// 如果只给 key，则默认 value 等于 key
+void Node::insert(uint8_t key) {
+    Node* successor = findSuccessor(key);
+    successor->localKeys_[key] = std::nullopt; // 表示无值
+    std::cout << "Key " << (int)key 
+              << " inserted with no value at Node " 
+              << (int)successor->id_ << "\n";
+}
+
+void Node::insert(uint8_t key, uint8_t value) {
+    Node* successor = findSuccessor(key);
+    successor->localKeys_[key] = value;
+    std::cout << "Key " << (int)key 
+              << " inserted with value " << (int)value 
+              << " at Node " << (int)successor->id_ << "\n";
+}
+
+
+Node* Node::findPredecessor(uint8_t key) {
+    Node* n = this;
+    // 当 key 不在 n 与 n 的后继之间时
+    while (!inInterval(key, n->id_, n->fingerTable_.get(1)->id_, true)) {
+        n = n->closestPrecedingFinger(key);
+    }
+    return n;
+}
+
+void Node::updateFingerTable(Node* s, int i) {
+    // 如果 s 的 id 落在 (n, finger[i]) 之间，则更新 finger[i]
+    // 注意：inInterval 中我们采用半开区间（不包含下界，但包含上界或根据需求调整）
+    if (inInterval(s->id_, this->id_, fingerTable_.get(i)->id_, false)) {
+        fingerTable_.set(i, s);
+        // 递归更新前驱，除非前驱就是自己
+        if (predecessor_ != s) {
+            predecessor_->updateFingerTable(s, i);
+        }
+    }
+}
+
+void Node::updateOthers() {
+    for (int i = 1; i <= BITLENGTH; i++) {
+        // 计算 (n - 2^(i-1)) mod 2^m
+        uint8_t pred_id = (id_ + 256 - (1 << (i-1))) % 256;
+        // 找到这个 pred_id 所对应的前驱节点 p
+        Node* p = findPredecessor(pred_id);
+        p->updateFingerTable(this, i);
+    }
+}
+
+void Node::printFingerTable() {
+    std::cout << "----------Node Id:" << (int)id_ << "-------------\n";
+    std::cout << "Successor: " << (int)fingerTable_.get(1)->id_
+              << "  Predecessor: " << (int)predecessor_->id_ << "\n";
+    fingerTable_.prettyPrint();
+    std::cout << "--------------------------------\n\n";
+}
+
+void Node::printKeys() {
+    std::cout << "Keys stored in Node " << (int)id_ << ": ";
+    for (auto &pair : localKeys_) {
+        std::cout << "(" << (int)pair.first << ",";
+        if (pair.second.has_value())
+            std::cout << (int)pair.second.value();
+        else
+            std::cout << "None";
+        std::cout << ") ";
+    }
+    std::cout << "\n";
 }
