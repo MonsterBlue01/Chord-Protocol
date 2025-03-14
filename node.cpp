@@ -171,3 +171,58 @@ void Node::printKeys() {
     }
     std::cout << "\n";
 }
+
+Node* Node::findSuccessorPath(uint8_t key, std::vector<uint8_t>& path) {
+    // 将当前节点加入路径
+    path.push_back(this->id_);
+    if (inInterval(key, this->id_, fingerTable_.get(1)->id_, true)) {
+        return fingerTable_.get(1);
+    } else {
+        Node* n0 = closestPrecedingFinger(key);
+        return n0->findSuccessorPath(key, path);
+    }
+}
+
+uint8_t Node::lookup(uint8_t key, std::vector<uint8_t>& path) {
+    Node* result = findSuccessorPath(key, path);
+    return result->id_;
+}
+
+uint8_t Node::iterativeLookup(uint8_t key, std::vector<uint8_t>& path, std::optional<uint8_t>& outValue) {
+    // 将当前节点（查找发起者）加入路径
+    path.push_back(this->id_);
+    // 调用 findSuccessor(key) 得到正确的后继
+    Node* succ = this->findSuccessor(key);
+    // 将后继节点加入路径
+    path.push_back(succ->id_);
+    // 查找该后继节点是否存有 key
+    auto it = succ->localKeys_.find(key);
+    if (it != succ->localKeys_.end()) {
+        outValue = it->second;
+    } else {
+        outValue = std::nullopt;
+    }
+    return succ->id_;
+}
+
+
+void Node::leave() {
+    // 首先将本节点所有的 key 迁移到后继节点
+    Node* succ = fingerTable_.get(1);
+    for (auto &pair : localKeys_) {
+        succ->localKeys_[pair.first] = pair.second;
+        std::cout << "migrate " << (int)pair.first << " from node " << (int)this->id_
+                  << " to node " << (int)succ->id_ << "\n";
+    }
+    localKeys_.clear();
+
+    // 更新前驱和后继的指针
+    // 让本节点的前驱的后继指向本节点的后继
+    predecessor_->fingerTable_.set(1, succ);
+    // 同时更新后继的前驱为本节点的前驱
+    succ->predecessor_ = predecessor_;
+
+    // 通知其它节点更新 finger table（简单调用 updateOthers() ）
+    updateOthers();
+    std::cout << "Node " << (int)this->id_ << " has left the network.\n";
+}

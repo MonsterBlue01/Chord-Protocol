@@ -1,4 +1,5 @@
 #include "node.h"
+#include <optional>
 
 int main() {
     // 1. 先创建并加入原有的 6 个节点
@@ -52,6 +53,37 @@ int main() {
 
     Node n6(100);
     n6.join(&n0); 
+
+    // 4. 进行查找测试：对每个已插入 key，从节点 n0, n2, n6 分别进行查找
+    std::vector<uint8_t> keys = {3, 200, 123, 45, 99, 60, 50, 100, 101, 102, 240, 250};
+    Node* lookupNodes[] = { &n0, &n2, &n6 };
+
+    for (Node* lookupNode : lookupNodes) {
+        std::cout << "\n--------------------------------------\n";
+        std::cout << "Lookup initiated at node " << (int)lookupNode->find(3) << "\n";
+        for (uint8_t k : keys) {
+            std::vector<uint8_t> path;
+            std::optional<uint8_t> value;
+            // 用迭代查找得到最终节点 ID, 并拿到其存储的 value（若有）
+            uint8_t res = lookupNode->iterativeLookup(k, path, value);
+        
+            // 打印类似 “Look-up result of key 3 from node 0 with path [0, 30] value is 3”
+            std::cout << "Look-up result of key " << (int)k 
+                      << " from node " << (int)lookupNode->getId()  // 这里直接用 ID
+                      << " with path [ ";
+            for (auto nodeID : path) {
+                std::cout << (int)nodeID << " ";
+            }
+            std::cout << "] value is ";
+        
+            if (value.has_value()) {
+                std::cout << (int)value.value();
+            } else {
+                std::cout << "None";
+            }
+            std::cout << "\n";
+        }
+    }
 
     return 0;
 }

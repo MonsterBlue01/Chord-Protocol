@@ -48,8 +48,17 @@ public:
     Node* closestPrecedingFinger(uint8_t key);
     Node* findPredecessor(uint8_t key);
 
+    // 在 public 中声明
+    uint8_t iterativeLookup(uint8_t key, std::vector<uint8_t>& path, std::optional<uint8_t>& outValue);
+
+    uint64_t getId() const { return id_; }
+
     void updateOthers();
     void updateFingerTable(Node* s, int i);
+
+    uint8_t lookup(uint8_t key, std::vector<uint8_t>& path);
+    void leave();
+    Node* findSuccessorPath(uint8_t key, std::vector<uint8_t>& path);
 
     static bool inInterval(uint8_t key, uint8_t start, uint8_t end, bool inclusiveEnd);
 
